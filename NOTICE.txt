@@ -1,0 +1,8 @@
+DBCheck
+Copyright 2018 Alexandre Roman.
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+This product includes software from Spring Framework developed by
+Pivotal, Inc (http://pivotal.io).
