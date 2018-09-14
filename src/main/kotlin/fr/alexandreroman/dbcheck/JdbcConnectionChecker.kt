@@ -47,7 +47,7 @@ class JdbcConnectionChecker(@Autowired val conf: JdbcConfiguration) {
         }
 
         conn.use {
-            if (conf.jdbcQuery == null) {
+            if (conf.jdbcQuery.isNullOrEmpty()) {
                 logger.debug("No JDBC query provided: cannot fully check database access")
             } else {
                 logger.debug("Checking database access using query: {}", conf.jdbcQuery)

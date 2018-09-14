@@ -22,7 +22,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.ModelAndView
 
 @RestController
 class JdbcConnectionController(
@@ -32,17 +31,15 @@ class JdbcConnectionController(
     @GetMapping("/status")
     fun checkConnection(): ResponseEntity<JdbcConnectionStatus> {
         val status = doCheckConnection()
+
+        if (status.state != JdbcConnectionStatus.State.SUCCESS) {
+            logger.warn("Database connection check failed", status.cause)
+        }
+
         return when (status.state) {
             JdbcConnectionStatus.State.SUCCESS -> ResponseEntity.ok(status)
             else -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(status)
         }
-    }
-
-    @GetMapping
-    fun getStatusPage(): ModelAndView {
-        val status = doCheckConnection()
-        val model = mapOf("status" to status)
-        return ModelAndView("status", model)
     }
 
     private fun doCheckConnection(): JdbcConnectionStatus {

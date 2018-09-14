@@ -25,15 +25,15 @@ import java.sql.DriverManager
 
 @Configuration
 class JdbcConfiguration(
-        @Value("dbcheck.url") private val jdbcUrl: String?,
-        @Value("dbcheck.user") private val jdbcUser: String?,
-        @Value("dbcheck.password") private val jdbcPassword: String?,
-        @Value("dbcheck.query") val jdbcQuery: String?) {
+        @Value("\${dbcheck.url}") private val jdbcUrl: String?,
+        @Value("\${dbcheck.user}") private val jdbcUser: String?,
+        @Value("\${dbcheck.password}") private val jdbcPassword: String?,
+        @Value("\${dbcheck.query}") val jdbcQuery: String?) {
 
     private val logger: Logger = LoggerFactory.getLogger(JdbcConfiguration::class.java)
 
     fun openConnection(): Connection? {
-        if (jdbcUrl == null) {
+        if (jdbcUrl.isNullOrEmpty()) {
             logger.error("Missing configuration property: JDBC URL")
             return null
         }
