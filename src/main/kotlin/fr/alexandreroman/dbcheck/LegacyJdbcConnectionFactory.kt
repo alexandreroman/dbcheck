@@ -18,28 +18,24 @@ package fr.alexandreroman.dbcheck
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Component
 import java.sql.Connection
 import java.sql.DriverManager
 
-@Configuration
-class JdbcConfiguration(
-        @Value("\${dbcheck.url}") private val jdbcUrl: String?,
-        @Value("\${dbcheck.user}") private val jdbcUser: String?,
-        @Value("\${dbcheck.password}") private val jdbcPassword: String?,
-        @Value("\${dbcheck.query}") val jdbcQuery: String?) {
+@Component
+@Profile("!cloud")
+class LegacyJdbcConnectionFactory(private val conf: LegacyConfiguration) : JdbcConnectionFactory {
+    private val logger: Logger = LoggerFactory.getLogger(LegacyJdbcConnectionFactory::class.java)
 
-    private val logger: Logger = LoggerFactory.getLogger(JdbcConfiguration::class.java)
-
-    fun openConnection(): Connection? {
-        if (jdbcUrl.isNullOrEmpty()) {
+    override fun createConnection(): Connection? {
+        if (conf.url.isNullOrEmpty()) {
             logger.error("Missing configuration property: JDBC URL")
             return null
         }
 
-        logger.debug("Opening JDBC connection: {}", jdbcUrl)
+        logger.debug("Opening JDBC connection: {}", conf.url)
         DriverManager.setLoginTimeout(4)
-        return DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)
+        return DriverManager.getConnection(conf.url, conf.user, conf.password)
     }
 }

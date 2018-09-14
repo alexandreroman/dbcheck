@@ -17,19 +17,23 @@
 package fr.alexandreroman.dbcheck
 
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.sql.Connection
+import java.sql.SQLException
 import java.sql.Statement
 
 @Component
-class JdbcConnectionChecker(@Autowired val conf: JdbcConfiguration) {
+class JdbcConnectionChecker(val connFactory: JdbcConnectionFactory) {
     private val logger = LoggerFactory.getLogger(JdbcConnectionChecker::class.java)
+
+    @Value("\${dbcheck.query}")
+    var jdbcQuery: String? = null
 
     fun checkConnection(): JdbcConnectionStatus {
         val conn: Connection
         try {
-            val nullableConn = conf.openConnection()
+            val nullableConn = connFactory.createConnection()
             if (nullableConn == null) {
                 return JdbcConnectionStatus(
                         state = JdbcConnectionStatus.State.BAD_CONFIG,
@@ -47,13 +51,13 @@ class JdbcConnectionChecker(@Autowired val conf: JdbcConfiguration) {
         }
 
         conn.use {
-            if (conf.jdbcQuery.isNullOrEmpty()) {
+            if (jdbcQuery.isNullOrEmpty()) {
                 logger.debug("No JDBC query provided: cannot fully check database access")
             } else {
-                logger.debug("Checking database access using query: {}", conf.jdbcQuery)
+                logger.debug("Checking database access using query: {}", jdbcQuery)
                 val stmt: Statement
                 try {
-                    stmt = conn.prepareStatement(conf.jdbcQuery)
+                    stmt = conn.prepareStatement(jdbcQuery)
                 } catch (e: Throwable) {
                     return JdbcConnectionStatus(
                             state = JdbcConnectionStatus.State.ERROR,
@@ -61,16 +65,24 @@ class JdbcConnectionChecker(@Autowired val conf: JdbcConfiguration) {
                             cause = e)
                 }
                 stmt.use {
-                    if (stmt.execute()) {
-                        stmt.resultSet.use {
-                            if (!it.next()) {
-                                return JdbcConnectionStatus(
-                                        state = JdbcConnectionStatus.State.ERROR,
-                                        message = "Database access failed: no result was returned",
-                                        cause = null
-                                )
+                    try {
+                        if (stmt.execute()) {
+                            stmt.resultSet.use {
+                                if (!it.next()) {
+                                    return JdbcConnectionStatus(
+                                            state = JdbcConnectionStatus.State.ERROR,
+                                            message = "Database access failed: no result was returned",
+                                            cause = null
+                                    )
+                                }
                             }
                         }
+                    } catch (e: SQLException) {
+                        return JdbcConnectionStatus(
+                                state = JdbcConnectionStatus.State.ERROR,
+                                message = "Database access failed: query error",
+                                cause = e
+                        )
                     }
                 }
             }

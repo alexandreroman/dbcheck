@@ -16,50 +16,49 @@
 
 package fr.alexandreroman.dbcheck
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.*
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicInteger
+import org.junit.runner.RunWith
+import org.mockito.BDDMockito.anyString
+import org.mockito.BDDMockito.given
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.junit4.SpringRunner
+import java.sql.Connection
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.SQLException
 
+@RunWith(SpringRunner::class)
 class JdbcConnectionCheckerTest {
-    companion object {
-        private val DB_COUNT = AtomicInteger(0)
-    }
-
-    private fun newDatabaseName(): String = "JdbcConnectionCheckerTest" + DB_COUNT.getAndIncrement()
+    @MockBean
+    lateinit var connFactory: JdbcConnectionFactory
+    @MockBean
+    lateinit var conn: Connection
+    @MockBean
+    lateinit var stmt: PreparedStatement
+    @MockBean
+    lateinit var rs: ResultSet
 
     @Test
     fun testCheckConnection() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
-        ))
+        given(connFactory.createConnection()).willReturn(conn)
+        val connChecker = JdbcConnectionChecker(connFactory)
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.SUCCESS, status.state)
     }
 
     @Test
     fun testCheckConnectionNoUrl() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = null,
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
-        ))
+        given(connFactory.createConnection()).willReturn(null)
+        val connChecker = JdbcConnectionChecker(connFactory)
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.BAD_CONFIG, status.state)
     }
 
     @Test
     fun testCheckConnectionInvalidUrl() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "dummy",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
-        ))
+        given(connFactory.createConnection()).willThrow(RuntimeException::class.java)
+        val connChecker = JdbcConnectionChecker(connFactory)
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.ERROR, status.state)
         assertNotNull(status.cause)
@@ -67,18 +66,13 @@ class JdbcConnectionCheckerTest {
 
     @Test
     fun testCheckConnectionQuery() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = "SELECT COUNT(*) FROM person"
-        ))
-
-        connChecker.conf.openConnection()?.use {
-            it.prepareStatement("CREATE TABLE person (id IDENTITY PRIMARY KEY)").use {
-                it.execute()
-            }
-        }
+        given(stmt.execute()).willReturn(true)
+        given(stmt.resultSet).willReturn(rs)
+        given(conn.prepareStatement(anyString())).willReturn(stmt)
+        given(rs.next()).willReturn(true)
+        given(connFactory.createConnection()).willReturn(conn)
+        val connChecker = JdbcConnectionChecker(connFactory)
+        connChecker.jdbcQuery = "SELECT * FROM users"
 
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.SUCCESS, status.state)
@@ -86,18 +80,11 @@ class JdbcConnectionCheckerTest {
 
     @Test
     fun testCheckConnectionQueryError() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = "SELECT foo FROM person"
-        ))
-
-        connChecker.conf.openConnection()?.use {
-            it.prepareStatement("CREATE TABLE person (id IDENTITY PRIMARY KEY)").use {
-                it.execute()
-            }
-        }
+        given(stmt.execute()).willThrow(SQLException::class.java)
+        given(conn.prepareStatement(anyString())).willReturn(stmt)
+        given(connFactory.createConnection()).willReturn(conn)
+        val connChecker = JdbcConnectionChecker(connFactory)
+        connChecker.jdbcQuery = "SELECT * FROM foo"
 
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.ERROR, status.state)
@@ -105,34 +92,16 @@ class JdbcConnectionCheckerTest {
 
     @Test
     fun testCheckConnectionQueryFailed() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = "SELECT COUNT(*) FROM person"
-        ))
+        given(stmt.execute()).willReturn(true)
+        given(stmt.resultSet).willReturn(rs)
+        given(rs.next()).willReturn(false)
+        given(conn.prepareStatement(anyString())).willReturn(stmt)
+        given(connFactory.createConnection()).willReturn(conn)
+        val connChecker = JdbcConnectionChecker(connFactory)
+        connChecker.jdbcQuery = "SELECT * FROM users"
 
         val status = connChecker.checkConnection()
         assertEquals(JdbcConnectionStatus.State.ERROR, status.state)
-        assertNotNull(status.cause)
-    }
-
-    @Test
-    fun testCheckConnectionQueryUpdate() {
-        val connChecker = JdbcConnectionChecker(JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = "INSERT INTO check VALUES(NOW())"
-        ))
-
-        connChecker.conf.openConnection()?.use {
-            it.prepareStatement("CREATE TABLE check (checkdate DATETIME NOT NULL)").use {
-                it.execute()
-            }
-        }
-
-        val status = connChecker.checkConnection()
-        assertEquals(JdbcConnectionStatus.State.SUCCESS, status.state)
+        assertNull(status.cause)
     }
 }

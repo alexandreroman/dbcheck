@@ -22,45 +22,45 @@ import org.junit.Test
 import java.sql.SQLTransientConnectionException
 import java.util.concurrent.atomic.AtomicInteger
 
-class JdbcConfigurationTest {
+class LegacyJdbcConnectionFactoryTest {
     companion object {
         private val DB_COUNT = AtomicInteger(0)
     }
 
-    private fun newDatabaseName(): String = "JdbcConfigurationTest" + DB_COUNT.getAndIncrement()
+    private fun newDatabaseName(): String = "LegacyJdbcConnectionFactoryTest" + DB_COUNT.getAndIncrement()
 
     @Test
     fun testCheckConnection() {
-        val conf = JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:mem:${newDatabaseName()}",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
+        val conf = LegacyConfiguration(
+                url = "jdbc:hsqldb:mem:${newDatabaseName()}",
+                user = "SA",
+                password = null,
+                query = null
         )
-        conf.openConnection().use {
+        LegacyJdbcConnectionFactory(conf).createConnection().use {
             assertNotNull("Connection null", it)
         }
     }
 
     @Test
     fun testCheckConnectionMissingUrl() {
-        val conf = JdbcConfiguration(
-                jdbcUrl = null,
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
+        val conf = LegacyConfiguration(
+                url = null,
+                user = "SA",
+                password = null,
+                query = null
         )
-        assertNull(conf.openConnection())
+        assertNull(LegacyJdbcConnectionFactory(conf).createConnection())
     }
 
     @Test(expected = SQLTransientConnectionException::class, timeout = 5000)
     fun testConnectionTimeout() {
-        val conf = JdbcConfiguration(
-                jdbcUrl = "jdbc:hsqldb:hsql://somehost.com",
-                jdbcUser = "SA",
-                jdbcPassword = null,
-                jdbcQuery = null
+        val conf = LegacyConfiguration(
+                url = "jdbc:hsqldb:hsql://somehost.com",
+                user = "SA",
+                password = null,
+                query = null
         )
-        conf.openConnection()
+        LegacyJdbcConnectionFactory(conf).createConnection()
     }
 }

@@ -16,15 +16,8 @@
 
 package fr.alexandreroman.dbcheck
 
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.junit4.SpringRunner
+import java.sql.Connection
 
-@RunWith(SpringRunner::class)
-@SpringBootTest
-class DbCheckApplicationTests {
-	@Test
-	fun contextLoads() {
-	}
+interface JdbcConnectionFactory {
+    fun createConnection(): Connection?
 }
