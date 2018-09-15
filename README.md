@@ -1,9 +1,12 @@
+<img src="src/main/resources/static/favicon.png" width="32" height="32"/>
+
 # DBCheck
 
-Use this web app to test your database connection through a JDBC driver.
+Use this web app to test your database connection using a JDBC driver.
 
 This app is suited to be deployed in Cloud environments (such as Cloud Foundry),
 but you should be able to run it as a regular JAR program.
+It's written in Kotlin, using Spring Boot, Spring MVC and Spring Cloud.
 
 ## How to use it?
 
@@ -26,9 +29,15 @@ JDBC driver to this project dependencies:
 
 After compiling this project, you now have a runnable JAR in the `target` directory.
 
+#### Deploy to Cloud Foundry
+
 If you're deploying this app to Cloud Foundry, the only thing you need to do is to bind your app
 to your service database. This service must be named `db`: the app will automatically try to connect
 to your database using this service.
+
+Just run this command, and you're good to go: `cf push -p target/dbcheck-VERSION.jar`
+
+#### Run as a regular JAR file
 
 If you're running this app as a regular JAR, you need to set some of the following properties:
 
@@ -38,9 +47,9 @@ If you're running this app as a regular JAR, you need to set some of the followi
  - `dbcheck.query`: SQL query to run for validating a connection (optional)
  - `dbcheck.driver`: FQCN of the JDBC driver (optional)
  
-Set these properties by using System properties when invokinq the JAR file.
+Set these properties by using System properties when invoking the JAR file.
 
-Example: `java -Ddbcheck.url=jdbc:hsqldb:hsql://dbhost -Ddbcheck.user=SA -Ddbcheck.password=whocares "-Ddbcheck.query=SELECT COUNT(*) FROM users" dbcheck-VERSION.jar`
+Example: `java -Ddbcheck.url=jdbc:hsqldb:hsql://dbhost -Ddbcheck.user=SA -Ddbcheck.password=whocares "-Ddbcheck.query=SELECT COUNT(*) FROM users" -jar dbcheck-VERSION.jar`
 
 Since this app is using [Spring Boot](http://spring.io/projects/spring-boot),
 you may need to set [additional properties](https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html),
@@ -63,6 +72,6 @@ Feel free to open issues & send PR.
 
 ## License
 
-Copyright &copy; 2018 Alexandre Roman
+Copyright &copy; 2018 Alexandre Roman.
 
 This project is licensed under the [Apache Software License version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
