@@ -16,10 +16,15 @@
 
 package fr.alexandreroman.dbcheck
 
+import org.springframework.cloud.CloudException
 import org.springframework.cloud.config.java.AbstractCloudConfig
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import java.io.PrintWriter
+import java.sql.Connection
+import java.sql.SQLException
+import java.util.logging.Logger
 import javax.sql.DataSource
 
 @Configuration
@@ -27,6 +32,46 @@ import javax.sql.DataSource
 class CloudConfiguration : AbstractCloudConfig() {
     @Bean
     fun dataSource(): DataSource {
-        return connectionFactory().dataSource()
+        try {
+            return cloud().getSingletonServiceConnector(DataSource::class.java, null)
+        } catch (e: CloudException) {
+            return NoOpDataSource
+        }
+    }
+
+    private object NoOpDataSource : DataSource {
+        override fun setLogWriter(out: PrintWriter?) {
+        }
+
+        override fun setLoginTimeout(seconds: Int) {
+        }
+
+        override fun isWrapperFor(iface: Class<*>?): Boolean {
+            return false
+        }
+
+        override fun <T : Any?> unwrap(iface: Class<T>?): T {
+            throw UnsupportedOperationException()
+        }
+
+        override fun getConnection(): Connection {
+            throw SQLException("No connection available: no service bound")
+        }
+
+        override fun getConnection(username: String?, password: String?): Connection {
+            return connection
+        }
+
+        override fun getParentLogger(): Logger {
+            throw UnsupportedOperationException()
+        }
+
+        override fun getLogWriter(): PrintWriter {
+            throw UnsupportedOperationException()
+        }
+
+        override fun getLoginTimeout(): Int {
+            throw UnsupportedOperationException()
+        }
     }
 }
